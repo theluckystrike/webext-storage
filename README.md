@@ -1,185 +1,97 @@
-# @zovo/webext-storage
+# @theluckystrike/webext-storage
 
-Typed Chrome storage wrapper with schema validation. Part of [@zovo/webext](https://zovo.one).
+A typed wrapper around the Chrome and Firefox storage API. Define your schema once, get full TypeScript autocompletion and runtime validation everywhere.
 
-Define your storage schema once, get full TypeScript autocompletion and runtime type validation for every `get`, `set`, `remove`, and `watch` call.
+Works with chrome.storage (Manifest V3) and browser.storage (Firefox / webextension-polyfill).
 
-## Install
 
-```bash
-npm install @zovo/webext-storage
-# or
-pnpm add @zovo/webext-storage
-```
+INSTALL
 
-## Quick Start
+npm install @theluckystrike/webext-storage
 
-```ts
-import { createStorage, defineSchema } from "@zovo/webext-storage";
 
-// 1. Define your schema with default values
+QUICK START
+
+import { defineSchema, createStorage } from "@theluckystrike/webext-storage";
+
 const schema = defineSchema({
   theme: "dark" as "dark" | "light",
-  count: 0,
+  fontSize: 14,
   enabled: true,
-  tags: [] as string[],
-  settings: { volume: 50 } as { volume: number },
 });
 
-// 2. Create a typed storage instance
 const storage = createStorage({ schema, area: "local" });
 
-// 3. Use it — fully typed!
-await storage.set("theme", "light");     // OK
-await storage.set("theme", "invalid");   // TS error
-await storage.set("count", "oops");      // TS error + runtime TypeError
+// Read a value (returns the schema default if unset)
+const theme = await storage.get("theme");
 
-const theme = await storage.get("theme");  // type: "dark" | "light"
-const count = await storage.get("count");  // type: number
-```
+// Write a value (type-checked against your schema)
+await storage.set("fontSize", 16);
 
-## API Reference
-
-### `defineSchema(schema)`
-
-Identity function that provides type inference for your schema definition. Each key maps to its default value.
-
-```ts
-const schema = defineSchema({
-  theme: "dark" as "dark" | "light",
-  count: 0,
-  enabled: true,
-});
-```
-
-Use `as` assertions to narrow literal/union types. Without them, TypeScript infers the widest type (e.g., `string` instead of `"dark" | "light"`).
-
-### `createStorage(options)`
-
-Creates a typed storage instance.
-
-| Option   | Type               | Default   | Description                        |
-|----------|--------------------|-----------|------------------------------------|
-| `schema` | `SchemaDefinition` | required  | Schema from `defineSchema()`       |
-| `area`   | `"local" \| "sync"` | `"local"` | Chrome storage area to use         |
-
-Returns a `TypedStorage<S>` instance.
-
-### `TypedStorage<S>`
-
-#### `storage.get(key)`
-
-Get a single value. Returns the stored value, or the schema default if the key hasn't been set.
-
-```ts
-const theme = await storage.get("theme"); // "dark" (default)
-```
-
-#### `storage.getMany(keys)`
-
-Get multiple values at once.
-
-```ts
-const { theme, count } = await storage.getMany(["theme", "count"]);
-```
-
-#### `storage.getAll()`
-
-Get all schema keys and their values.
-
-```ts
-const all = await storage.getAll();
-// { theme: "dark", count: 0, enabled: true, tags: [], settings: { volume: 50 } }
-```
-
-#### `storage.set(key, value)`
-
-Set a single value. Validates the value type against the schema at runtime.
-
-```ts
-await storage.set("count", 42);      // OK
-await storage.set("count", "hello"); // throws TypeError
-```
-
-#### `storage.setMany(items)`
-
-Set multiple values at once. All values are validated before writing.
-
-```ts
-await storage.setMany({ theme: "light", count: 10 });
-```
-
-#### `storage.remove(key)`
-
-Remove a single key. The next `get()` call returns the schema default.
-
-```ts
-await storage.remove("theme");
-const theme = await storage.get("theme"); // "dark" (default)
-```
-
-#### `storage.removeMany(keys)`
-
-Remove multiple keys at once.
-
-```ts
-await storage.removeMany(["theme", "count"]);
-```
-
-#### `storage.clear()`
-
-Remove all schema-defined keys from storage.
-
-```ts
-await storage.clear();
-```
-
-#### `storage.watch(key, callback)`
-
-Watch a key for changes. Returns an unsubscribe function.
-
-```ts
-const unwatch = storage.watch("theme", (newValue, oldValue) => {
-  console.log(`Theme changed: ${oldValue} -> ${newValue}`);
+// Watch for changes
+const unwatch = storage.watch("theme", (newVal, oldVal) => {
+  console.log("theme changed", oldVal, "->", newVal);
 });
 
-// Later: stop watching
-unwatch();
-```
 
-The callback receives `(newValue: T, oldValue: T | undefined)`. It only fires for changes in the matching storage area.
+API
 
-## Schema Validation
+defineSchema(schema)
 
-The wrapper validates at two levels:
+Identity function that locks in your literal types. Pass your defaults object through this before handing it to createStorage.
 
-1. **Compile-time** — TypeScript catches type mismatches in your editor.
-2. **Runtime** — `set()` and `setMany()` throw `TypeError` if the value type doesn't match the schema default's type. Unknown keys throw `Error`.
+  const schema = defineSchema({
+    theme: "dark" as "dark" | "light",
+    count: 0,
+    tags: [] as string[],
+  });
 
-```ts
-await storage.set("count", "bad"); // TypeError: Key "count" expects type "number" but received "string".
-await storage.get("unknown");      // Error: Unknown key "unknown". Valid keys: theme, count, enabled, ...
-```
 
-`null` is accepted for any key (useful for clearing values while keeping the key present).
+createStorage(options)
 
-## Sync vs Local
+Returns a TypedStorage instance. Options:
 
-```ts
-const local = createStorage({ schema, area: "local" });  // chrome.storage.local
-const sync  = createStorage({ schema, area: "sync" });   // chrome.storage.sync
-```
+  schema    Your schema object (required)
+  area      "local" or "sync" (defaults to "local")
 
-Sync storage has lower quotas but syncs across the user's devices. Local storage has higher limits but stays on the current device.
 
-## Firefox / Polyfill Support
+TypedStorage Methods
 
-The library checks for both `chrome.storage` and `browser.storage` globals, so it works with Firefox WebExtensions and the `webextension-polyfill` library out of the box.
+  get(key)                Returns the stored value, or the schema default
+  getMany(keys)           Returns an object with values for the given keys
+  getAll()                Returns all schema keys and their values
+  set(key, value)         Stores a value (validated at runtime)
+  setMany(items)          Stores multiple values at once
+  remove(key)             Removes a key from storage
+  removeMany(keys)        Removes multiple keys
+  clear()                 Removes all schema-defined keys
+  watch(key, callback)    Watches a key for changes, returns an unwatch function
 
-## Branding
+All read and write methods are async and return Promises.
 
-**@zovo/webext-storage** is part of the [Zovo](https://zovo.one) open-source ecosystem — tools and libraries for building modern browser extensions.
 
-## License
+VALIDATION
 
-[MIT](./LICENSE)
+The library validates at two levels. At compile time, TypeScript will reject any key or value that does not match your schema. At runtime, set and setMany check the typeof each value against the schema default and throw a TypeError on mismatch. Null is accepted for any key.
+
+
+SYNC VS LOCAL
+
+Use area "local" for data that stays on the current device. Use area "sync" for data that follows the user across signed-in browsers. The sync area has lower size limits, so keep payloads small.
+
+
+FIREFOX AND POLYFILLS
+
+The library checks for chrome.storage first, then falls back to browser.storage. If you use webextension-polyfill, everything works out of the box.
+
+
+LICENSE
+
+MIT
+
+
+ABOUT
+
+Part of the @zovo/webext toolkit. Built by theluckystrike at zovo.one, a studio for Chrome extensions and browser tools.
+
+https://github.com/theluckystrike/webext-storage

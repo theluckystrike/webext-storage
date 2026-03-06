@@ -1,62 +1,42 @@
-# Contributing to webext-storage
+# Contributing to @theluckystrike/webext-storage
 
-Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to this project.
+Thanks for your interest in contributing.
 
-## How to Report Issues
 
-- Use the [GitHub Issues](https://github.com/theluckystrike/webext-storage/issues) page to report bugs or request features.
-- Check existing issues before opening a new one to avoid duplicates.
-- Use the provided issue templates (Bug Report or Feature Request) when applicable.
+REPORTING ISSUES
 
-## Development Workflow
+Open an issue on GitHub. Include the browser, manifest version, package version, and steps to reproduce the problem. A minimal reproduction repo or code snippet helps a lot.
 
-1. **Fork** the repository on GitHub.
-2. **Clone** your fork locally:
-   ```bash
-   git clone https://github.com/<your-username>/webext-storage.git
-   cd webext-storage
-   ```
-3. **Create a branch** for your change:
-   ```bash
-   git checkout -b my-feature
-   ```
-4. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-5. **Make your changes** and ensure tests pass:
-   ```bash
-   npm test
-   ```
-6. **Commit** your changes with a clear, descriptive commit message.
-7. **Push** your branch to your fork:
-   ```bash
-   git push origin my-feature
-   ```
-8. **Open a Pull Request** against the `main` branch of this repository.
 
-## Pull Request Guidelines
+DEVELOPMENT WORKFLOW
 
-- Keep PRs focused on a single change.
-- Include a clear description of what the PR does and why.
-- Ensure all tests pass before requesting a review.
-- Update documentation if your change affects public APIs.
+Fork the repo and clone your fork locally.
 
-## Code Style
+  git clone https://github.com/YOUR_USERNAME/webext-storage.git
+  cd webext-storage
+  npm install
 
-- Write TypeScript with strict type checking enabled.
-- Follow the existing code conventions in the project.
-- Use meaningful variable and function names.
-- Add JSDoc comments for public APIs.
+Create a branch for your change.
 
-## Running Tests
+  git checkout -b my-change
 
-```bash
-npm test
-```
+Make your changes, then run the tests.
 
-All contributions must pass the existing test suite. If you add new functionality, please include corresponding tests.
+  npm test
 
-## License
+Push your branch and open a pull request against main.
 
-By contributing to this project, you agree that your contributions will be licensed under the same license as the project.
+
+CODE STYLE
+
+Write TypeScript with strict mode enabled. Keep functions small and focused. Add JSDoc comments for public API surface. Follow the patterns already in the codebase.
+
+
+TESTING
+
+Every new feature or bug fix should include a test. The test suite uses Vitest. Run npm test before submitting your PR.
+
+
+LICENSE
+
+By contributing, you agree that your contributions will be licensed under the MIT License.
