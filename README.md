@@ -9,11 +9,9 @@ A typed wrapper around the Chrome and Firefox storage API. Define your schema on
 
 Works with chrome.storage (Manifest V3) and browser.storage (Firefox / webextension-polyfill).
 
-
 INSTALL
 
 npm install @theluckystrike/webext-storage
-
 
 QUICK START
 
@@ -38,7 +36,6 @@ const unwatch = storage.watch("theme", (newVal, oldVal) => {
   console.log("theme changed", oldVal, "->", newVal);
 });
 
-
 API
 
 defineSchema(schema)
@@ -51,14 +48,12 @@ Identity function that locks in your literal types. Pass your defaults object th
     tags: [] as string[],
   });
 
-
 createStorage(options)
 
 Returns a TypedStorage instance. Options:
 
   schema    Your schema object (required)
   area      "local" or "sync" (defaults to "local")
-
 
 TypedStorage Methods
 
@@ -74,33 +69,27 @@ TypedStorage Methods
 
 All read and write methods are async and return Promises.
 
-
 VALIDATION
 
 The library validates at two levels. At compile time, TypeScript will reject any key or value that does not match your schema. At runtime, set and setMany check the typeof each value against the schema default and throw a TypeError on mismatch. Null is accepted for any key.
-
 
 SYNC VS LOCAL
 
 Use area "local" for data that stays on the current device. Use area "sync" for data that follows the user across signed-in browsers. The sync area has lower size limits, so keep payloads small.
 
-
 FIREFOX AND POLYFILLS
 
 The library checks for chrome.storage first, then falls back to browser.storage. If you use webextension-polyfill, everything works out of the box.
 
-
 LICENSE
 
 MIT
-
 
 ABOUT
 
 Part of the @zovo/webext toolkit. Built by theluckystrike at zovo.one, a studio for Chrome extensions and browser tools.
 
 https://github.com/theluckystrike/webext-storage
-
 
 Part of the **[Chrome Extension Toolkit](https://github.com/theluckystrike/chrome-extension-toolkit)** by theluckystrike. See all templates, packages, and guides at [github.com/theluckystrike/chrome-extension-toolkit](https://github.com/theluckystrike/chrome-extension-toolkit).
 
