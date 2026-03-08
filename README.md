@@ -1,20 +1,50 @@
-[![CI](https://github.com/theluckystrike/webext-storage/actions/workflows/ci.yml/badge.svg)](https://github.com/theluckystrike/webext-storage/actions)
-[![npm](https://img.shields.io/npm/v/@theluckystrike/webext-storage)](https://www.npmjs.com/package/@theluckystrike/webext-storage)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+<div align="center">
 
 # @theluckystrike/webext-storage
 
-A typed wrapper around the Chrome and Firefox storage API. Define your schema once, get full TypeScript autocompletion and runtime validation everywhere.
+Typed Chrome storage wrapper with schema validation. Define your schema once, get autocompletion and runtime type checking everywhere.
 
-Works with chrome.storage (Manifest V3) and browser.storage (Firefox / webextension-polyfill).
+[![npm version](https://img.shields.io/npm/v/@theluckystrike/webext-storage)](https://www.npmjs.com/package/@theluckystrike/webext-storage)
+[![npm downloads](https://img.shields.io/npm/dm/@theluckystrike/webext-storage)](https://www.npmjs.com/package/@theluckystrike/webext-storage)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+![npm bundle size](https://img.shields.io/bundlephobia/minzip/@theluckystrike/webext-storage)
 
-INSTALL
+[Installation](#installation) · [Quick Start](#quick-start) · [API](#api) · [License](#license)
 
+</div>
+
+---
+
+## Features
+
+- **Schema-driven** -- define defaults and types in one place
+- **Runtime validation** -- type-checks values before writing to storage
+- **Watch changes** -- subscribe to key-level storage changes
+- **Sync + local** -- supports both `chrome.storage.local` and `chrome.storage.sync`
+- **Firefox compatible** -- falls back to `browser.storage` automatically
+- **Full CRUD** -- `get`, `getMany`, `getAll`, `set`, `setMany`, `remove`, `clear`
+
+## Installation
+
+```bash
 npm install @theluckystrike/webext-storage
+```
 
-QUICK START
+<details>
+<summary>Other package managers</summary>
 
+```bash
+pnpm add @theluckystrike/webext-storage
+# or
+yarn add @theluckystrike/webext-storage
+```
+
+</details>
+
+## Quick Start
+
+```typescript
 import { defineSchema, createStorage } from "@theluckystrike/webext-storage";
 
 const schema = defineSchema({
@@ -25,74 +55,59 @@ const schema = defineSchema({
 
 const storage = createStorage({ schema, area: "local" });
 
-// Read a value (returns the schema default if unset)
-const theme = await storage.get("theme");
+const theme = await storage.get("theme");        // typed as "dark" | "light"
+await storage.set("fontSize", 16);               // type-checked
+const unsub = storage.watch("theme", (n, o) => { /* ... */ });
+```
 
-// Write a value (type-checked against your schema)
-await storage.set("fontSize", 16);
+## API
 
-// Watch for changes
-const unwatch = storage.watch("theme", (newVal, oldVal) => {
-  console.log("theme changed", oldVal, "->", newVal);
-});
+| Method | Description |
+|--------|-------------|
+| `defineSchema(defaults)` | Locks in literal types for your schema |
+| `createStorage({ schema, area })` | Returns a `TypedStorage` instance |
+| `get(key)` | Read a value (returns schema default if unset) |
+| `getMany(keys)` / `getAll()` | Batch reads |
+| `set(key, value)` / `setMany(items)` | Write with runtime validation |
+| `remove(key)` / `removeMany(keys)` / `clear()` | Delete keys |
+| `watch(key, callback)` | Subscribe to changes, returns unsubscribe function |
 
-API
+## Permissions
 
-defineSchema(schema)
+```json
+{ "permissions": ["storage"] }
+```
 
-Identity function that locks in your literal types. Pass your defaults object through this before handing it to createStorage.
+## Part of @zovo/webext
 
-  const schema = defineSchema({
-    theme: "dark" as "dark" | "light",
-    count: 0,
-    tags: [] as string[],
-  });
+This package is part of the [@zovo/webext](https://github.com/theluckystrike) family -- typed, modular utilities for Chrome extension development:
 
-createStorage(options)
+| Package | Description |
+|---------|-------------|
+| [webext-storage](https://github.com/theluckystrike/webext-storage) | Typed storage with schema validation |
+| [webext-messaging](https://github.com/theluckystrike/webext-messaging) | Type-safe message passing |
+| [webext-tabs](https://github.com/theluckystrike/webext-tabs) | Tab query helpers |
+| [webext-cookies](https://github.com/theluckystrike/webext-cookies) | Promise-based cookies API |
+| [webext-i18n](https://github.com/theluckystrike/webext-i18n) | Internationalization toolkit |
 
-Returns a TypedStorage instance. Options:
+## Contributing
 
-  schema    Your schema object (required)
-  area      "local" or "sync" (defaults to "local")
+Contributions are welcome! Please open an issue or submit a pull request.
 
-TypedStorage Methods
-
-  get(key)                Returns the stored value, or the schema default
-  getMany(keys)           Returns an object with values for the given keys
-  getAll()                Returns all schema keys and their values
-  set(key, value)         Stores a value (validated at runtime)
-  setMany(items)          Stores multiple values at once
-  remove(key)             Removes a key from storage
-  removeMany(keys)        Removes multiple keys
-  clear()                 Removes all schema-defined keys
-  watch(key, callback)    Watches a key for changes, returns an unwatch function
-
-All read and write methods are async and return Promises.
-
-VALIDATION
-
-The library validates at two levels. At compile time, TypeScript will reject any key or value that does not match your schema. At runtime, set and setMany check the typeof each value against the schema default and throw a TypeError on mismatch. Null is accepted for any key.
-
-SYNC VS LOCAL
-
-Use area "local" for data that stays on the current device. Use area "sync" for data that follows the user across signed-in browsers. The sync area has lower size limits, so keep payloads small.
-
-FIREFOX AND POLYFILLS
-
-The library checks for chrome.storage first, then falls back to browser.storage. If you use webextension-polyfill, everything works out of the box.
-
-LICENSE
-
-MIT
-
-ABOUT
-
-Part of the @zovo/webext toolkit. Built by theluckystrike at zovo.one, a studio for Chrome extensions and browser tools.
-
-https://github.com/theluckystrike/webext-storage
-
-Part of the **[Chrome Extension Toolkit](https://github.com/theluckystrike/chrome-extension-toolkit)** by theluckystrike. See all templates, packages, and guides at [github.com/theluckystrike/chrome-extension-toolkit](https://github.com/theluckystrike/chrome-extension-toolkit).
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+MIT License -- see [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+Built by [theluckystrike](https://github.com/theluckystrike) · [zovo.one](https://zovo.one)
+
+</div>

@@ -29,15 +29,18 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "chrome",
-    "extension",
+    "chrome-extension",
     "storage",
     "typed",
     "typescript",
+    "schema",
+    "validation",
     "webextension",
     "browser-extension",
-    "schema",
-    "validation"
+    "manifest-v3",
+    "chrome-storage",
+    "sync",
+    "local"
   ],
   "author": "theluckystrike",
   "license": "MIT",
