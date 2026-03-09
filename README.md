@@ -1,107 +1,50 @@
-[![CI](https://github.com/theluckystrike/webext-storage/actions/workflows/ci.yml/badge.svg)](https://github.com/theluckystrike/webext-storage/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@theluckystrike/webext-storage?color=green)](https://www.npmjs.com/package/@theluckystrike/webext-storage)
-[![npm downloads](https://img.shields.io/npm/dt/@theluckystrike/webext-storage)](https://www.npmjs.com/package/@theluckystrike/webext-storage)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/theluckystrike/webext-storage/actions/workflows/ci.yml/badge.svg)](https://github.com/theluckystrike/webext-storage/actions)
+[![npm](https://img.shields.io/npm/v/@theluckystrike/webext-storage)](https://www.npmjs.com/package/@theluckystrike/webext-storage)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![Chrome Extensions](https://img.shields.io/badge/Chrome-Extensions-orange)](https://developer.chrome.com/docs/extensions)
-[![Firefox WebExtensions](https://img.shields.io/badge/Firefox-WebExtensions-orange)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
 
 # @theluckystrike/webext-storage
 
-A **type-safe, validated wrapper** around the Chrome and Firefox storage API for browser extensions. Define your storage schema once, and get full TypeScript autocompletion, compile-time type checking, and runtime validation everywhere.
+A type-safe storage wrapper for browser extensions with schema validation. Define your storage schema once, and get full TypeScript autocompletion, runtime type checking, and change watching out of the box.
 
-Works seamlessly with **chrome.storage** (Manifest V3), **browser.storage** (Firefox), and **webextension-polyfill**.
+Works with `chrome.storage` (Chrome, Edge, Brave) and `browser.storage` (Firefox with webextension-polyfill).
 
----
+## Why Use This Library?
 
-## Table of Contents
+The native Chrome storage API (`chrome.storage`) has two significant pain points:
 
-- [Why Use webext-storage?](#why-use-webext-storage)
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [API Reference](#api-reference)
-  - [`defineSchema()`](#defineschemadefinition)
-  - [`createStorage()`](#createstorageoptions)
-  - [`TypedStorage` Methods](#typedstorage-methods)
-- [Examples](#examples)
-  - [Basic Usage](#basic-usage)
-  - [Working with Complex Types](#working-with-complex-types)
-  - [Watching for Changes](#watching-for-changes)
-  - [Sync vs Local Storage](#sync-vs-local-storage)
-- [Type Safety Explained](#type-safety-explained)
-- [Comparison with Alternatives](#comparison-with-alternatives)
-- [Migration Guide](#migration-guide)
-- [Firefox and Polyfills](#firefox-and-polyfills)
-- [Best Practices](#best-practices)
-- [Related Packages](#related-packages)
-- [License](#license)
-- [About](#about)
+1. **No type safety** — Keys are just strings, values are `any`. Easy to make typos or pass wrong types.
+2. **No default values** — You have to manually check if keys exist and provide fallbacks every time.
 
----
-
-## Why Use webext-storage?
-
-Building browser extensions with the native Chrome storage API has pain points:
-
-1. **No type safety** — typos in key names cause silent failures
-2. **No validation** — storing wrong types corrupts your data
-3. **No defaults** — you must manually handle unset values
-4. **Verbose API** — `chrome.storage.local.get()` returns `any`
-
-**webext-storage** solves all of these:
+This library solves both:
 
 ```typescript
-// ❌ Raw Chrome API — error-prone
-const result = await chrome.storage.local.get("theme");
-// result.theme could be anything...
+// Before: No autocomplete, no validation
+chrome.storage.local.get("theme", (result) => {
+  const theme = result.theme ?? "dark"; // What if theme is null?
+});
 
-// ✅ webext-storage — fully typed and validated
+// After: Full type safety with schema defaults
 const theme = await storage.get("theme"); // TypeScript knows it's "dark" | "light"
-await storage.set("theme", "light");       // TypeScript rejects invalid values
 ```
-
----
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **Full TypeScript Support** | Type inference from schema definitions with autocomplete for keys and values |
-| **Runtime Validation** | Automatic type checking when storing values |
-| **Schema Defaults** | Values not in storage automatically return schema defaults |
-| **Two-Way Type Safety** | Both compile-time (TypeScript) and runtime validation |
-| **Watch/Observer Pattern** | Subscribe to changes on specific keys with cleanup |
-| **Multi-Key Operations** | Get, set, and remove multiple keys in one call |
-| **Local & Sync Support** | Use `local` for device-specific or `sync` for cross-device data |
-| **Firefox Compatible** | Works with browser.storage and webextension-polyfill |
-| **Zero Dependencies** | Lightweight — no runtime dependencies |
-| **Frozen Schema** | Schema is immutable after creation |
-
----
 
 ## Installation
 
-Install via npm or yarn:
-
 ```bash
-# npm
 npm install @theluckystrike/webext-storage
-
-# yarn
-yarn add @theluckystrike/webext-storage
-
-# pnpm
-pnpm add @theluckystrike/webext-storage
 ```
 
-This package is published to the GitHub Package Registry. If you haven't configured npm to use the GitHub registry, add this to your `.npmrc`:
+This package is published to the GitHub Package Registry. If you haven't added it to your `.npmrc`, add this to your project's `.npmrc`:
 
 ```
 @theluckystrike:registry=https://npm.pkg.github.com
 ```
 
----
+Or use the npm flag:
+
+```bash
+npm install @theluckystrike/webext-storage --registry=https://npm.pkg.github.com
+```
 
 ## Quick Start
 
@@ -113,376 +56,440 @@ const schema = defineSchema({
   theme: "dark" as "dark" | "light",
   fontSize: 14,
   enabled: true,
+  userName: null as string | null,
 });
 
 // 2. Create a typed storage instance
 const storage = createStorage({ schema, area: "local" });
 
-// 3. Read values — returns schema default if not set
-const theme = await storage.get("theme"); // "dark" | "light"
-const fontSize = await storage.get("fontSize"); // number
+// 3. Use it with full type safety
+const theme = await storage.get("theme");     // Type: "dark" | "light"
+await storage.set("fontSize", 18);            // Type checked!
 
-// 4. Write values — type-checked at compile time, validated at runtime
-await storage.set("theme", "light"); // ✅ Valid
-// await storage.set("theme", "invalid"); // ❌ TypeScript error!
-
-// 5. Watch for changes
+// 4. Watch for changes
 const unwatch = storage.watch("theme", (newValue, oldValue) => {
   console.log(`Theme changed from ${oldValue} to ${newValue}`);
-  applyTheme(newValue);
 });
 
-// Later: unsubscribe
+// Clean up watcher when done
 unwatch();
 ```
 
----
+## Key Features
+
+### TypeScript-First Design
+
+The library uses TypeScript's type system to catch errors at compile time:
+
+```typescript
+const schema = defineSchema({
+  count: 0,
+  name: "default",
+});
+
+// ✅ TypeScript knows exact types
+await storage.set("count", 5);
+await storage.set("name", "Alice");
+
+// ❌ TypeScript Error: Argument of type '"unknown"' is not assignable
+await storage.set("unknown", "value");
+
+// ❌ TypeScript Error: Type 'number' is not assignable to type 'string'
+await storage.set("name", 123);
+```
+
+### Runtime Validation
+
+Even if TypeScript compilation passes, the library validates types at runtime:
+
+```typescript
+const schema = defineSchema({
+  enabled: true,
+});
+
+// This will throw a TypeError at runtime
+await storage.set("enabled", "yes" as any);
+```
+
+Runtime validation catches issues that might slip through in edge cases, like data corruption or cross-context communication.
+
+### Automatic Default Values
+
+Every `get()` call returns the schema default if no value is stored:
+
+```typescript
+const schema = defineSchema({
+  theme: "dark" as "dark" | "light",
+  visits: 0,
+});
+
+const storage = createStorage({ schema });
+
+// Returns "dark" (the default) if nothing is stored
+const theme = await storage.get("theme");
+
+// Returns 0 if nothing is stored
+const visits = await storage.get("visits");
+```
+
+### Change Watching
+
+Subscribe to storage changes in real time:
+
+```typescript
+const unwatch = storage.watch("settings", (newValue, oldValue) => {
+  console.log("Settings changed!", { newValue, oldValue });
+});
+
+// Later: clean up the watcher
+unwatch();
+```
+
+The callback receives both the new value and the previous value, allowing you to react to specific changes.
 
 ## API Reference
 
-### `defineSchema(definition)`
+### `defineSchema(schema)`
 
-An identity function that provides **TypeScript type narrowing** for your schema. It locks in literal types so that TypeScript can properly infer union types.
+An identity function that preserves literal types in your schema. Use this to define your storage shape.
 
-**Parameters:**
-- `definition` — An object mapping keys to their default values
-
-**Returns:** The same object with narrowed types
-
-**Example:**
 ```typescript
 const schema = defineSchema({
+  // String literals become exact types
   theme: "dark" as "dark" | "light",
+  
+  // Numbers preserve their type
   count: 0,
+  
+  // Arrays need type assertion
   tags: [] as string[],
-  config: { theme: "default" } as { theme: string },
+  
+  // Null is explicitly supported
+  userId: null as string | null,
 });
 ```
-
-> **Tip:** Use TypeScript type assertions (`as Type`) on string values to create union types. This gives you autocomplete for valid values.
-
----
 
 ### `createStorage(options)`
 
-Creates a `TypedStorage` instance bound to a storage area.
+Creates a typed storage instance.
 
-**Parameters:**
 ```typescript
-interface StorageOptions<S extends SchemaDefinition> {
-  /** The schema that defines keys and their default values (from defineSchema) */
-  schema: S;
-  /** Which storage area to use: "local" or "sync". Defaults to "local" */
-  area?: AreaName;
+const storage = createStorage({
+  schema: defineSchema({ /* ... */ }),
+  area: "local",  // or "sync", defaults to "local"
+});
+```
+
+#### Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `schema` | `SchemaDefinition` | Yes | — | Object defining keys and default values |
+| `area` | `"local" \| "sync"` | No | `"local"` | Which storage area to use |
+
+### TypedStorage Methods
+
+#### `get(key)`
+
+Returns the stored value, or the schema default if unset.
+
+```typescript
+const theme = await storage.get("theme");
+```
+
+#### `getMany(keys)`
+
+Returns an object with values for the requested keys.
+
+```typescript
+const { theme, fontSize } = await storage.getMany(["theme", "fontSize"]);
+```
+
+#### `getAll()`
+
+Returns all schema keys and their values.
+
+```typescript
+const all = await storage.getAll();
+// { theme: "dark", fontSize: 14, enabled: true }
+```
+
+#### `set(key, value)`
+
+Stores a value. Type-checked at compile time, validated at runtime.
+
+```typescript
+await storage.set("theme", "light");
+```
+
+#### `setMany(items)`
+
+Stores multiple values at once.
+
+```typescript
+await storage.setMany({
+  theme: "light",
+  fontSize: 18,
+});
+```
+
+#### `remove(key)`
+
+Removes a key from storage. The key returns to its default on next read.
+
+```typescript
+await storage.remove("theme");
+```
+
+#### `removeMany(keys)`
+
+Removes multiple keys.
+
+```typescript
+await storage.removeMany(["theme", "fontSize"]);
+```
+
+#### `clear()`
+
+Removes all schema-defined keys from storage.
+
+```typescript
+await storage.clear();
+```
+
+#### `watch(key, callback)`
+
+Watches a specific key for changes. Returns an unwatch function.
+
+```typescript
+const unwatch = storage.watch("theme", (newValue, oldValue) => {
+  console.log(`Theme: ${oldValue} → ${newValue}`);
+});
+
+// Stop watching
+unwatch();
+```
+
+## Storage Areas
+
+### Local Storage
+
+```typescript
+const storage = createStorage({ schema, area: "local" });
+```
+
+Use `local` for data that should stay on the current device. No sync across browsers. Higher storage limits (typically 5MB).
+
+### Sync Storage
+
+```typescript
+const storage = createStorage({ schema, area: "sync" });
+```
+
+Use `sync` for data that should follow the user across their signed-in browsers. Lower storage limits (typically 100KB). Requires the user to be signed into Chrome with sync enabled.
+
+## Browser Compatibility
+
+| Browser | Support | Notes |
+|---------|---------|-------|
+| Chrome | ✅ Full | Uses `chrome.storage` |
+| Edge | ✅ Full | Uses `chrome.storage` |
+| Brave | ✅ Full | Uses `chrome.storage` |
+| Firefox | ✅ Full | Uses `browser.storage` with polyfill |
+| Safari | ⚠️ Limited | No official WebExtension storage API |
+
+The library automatically detects whether `chrome.storage` or `browser.storage` is available and uses the appropriate API.
+
+### Using with Firefox
+
+If you're using [webextension-polyfill](https://github.com/mozilla/webextension-polyfill), this library works out of the box:
+
+```javascript
+// In your manifest.json
+{
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "your-extension@example.com",
+      "strict_min_version": "109.0"
+    }
+  }
 }
 ```
 
-**Returns:** A `TypedStorage<S>` instance
+```javascript
+// In your code - the polyfill must be loaded first
+import browser from "webextension-polyfill";
+window.browser = browser;
 
-**Example:**
-```typescript
-const localStorage = createStorage({ schema });
-const syncStorage = createStorage({ schema, area: "sync" });
+import { createStorage, defineSchema } from "@theluckystrike/webext-storage";
+// Now works with Firefox!
 ```
 
----
+## Migration from Raw chrome.storage
 
-### `TypedStorage` Methods
-
-All read and write methods are **async** and return **Promises**.
-
-#### Read Operations
-
-| Method | Description |
-|--------|-------------|
-| `get<K>(key: K)` | Get a single key. Returns stored value or schema default. |
-| `getMany<K>(keys: K[])` | Get multiple keys. Returns object with requested values. |
-| `getAll()` | Get all keys defined in schema. Returns full schema type. |
-
-#### Write Operations
-
-| Method | Description |
-|--------|-------------|
-| `set<K>(key: K, value: S[K])` | Set a single key-value pair. Validates type at runtime. |
-| `setMany(items: Partial<SchemaType<S>>)` | Set multiple key-value pairs. |
-| `remove<K>(key: K)` | Remove a single key. |
-| `removeMany<K>(keys: K[])` | Remove multiple keys. |
-| `clear()` | Remove all schema-defined keys. |
-
-#### Observation
-
-| Method | Description |
-|--------|-------------|
-| `watch<K>(key: K, callback: WatchCallback<S[K]>)` | Watch a key for changes. Returns `Unwatch` function. |
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `schema` | `Readonly<S>` | Frozen copy of the schema |
-| `area` | `AreaName` | The storage area ("local" or "sync") |
-
----
-
-## Examples
-
-### Basic Usage
+### Before
 
 ```typescript
-import { defineSchema, createStorage } from "@theluckystrike/webext-storage";
-
-const settingsSchema = defineSchema({
-  notifications: true,
-  autoSave: false,
-  maxResults: 50,
+// Reading with defaults
+chrome.storage.local.get(["theme", "fontSize"], (result) => {
+  const theme = (result.theme as string) ?? "dark";
+  const fontSize = (result.fontSize as number) ?? 14;
 });
 
-const storage = createStorage({ schema: settingsSchema });
+// Writing
+chrome.storage.local.set({ theme: "light" });
 
-// Reading values
-const notifications = await storage.get("notifications"); // boolean
-const allSettings = await storage.getAll(); // { notifications: boolean, autoSave: boolean, maxResults: number }
-
-// Writing values
-await storage.set("notifications", false);
-await storage.setMany({ autoSave: true, maxResults: 100 });
-```
-
-### Working with Complex Types
-
-```typescript
-const schema = defineSchema({
-  // Arrays
-  bookmarks: [] as string[],
-  // Objects
-  preferences: { darkMode: true } as { darkMode: boolean },
-  // Nested unions via assertion
-  view: "grid" as "grid" | "list" | "kanban",
-});
-
-const storage = createStorage({ schema });
-
-// Arrays
-await storage.set("bookmarks", ["https://example.com", "https://test.com"]);
-const bookmarks = await storage.get("bookmarks"); // string[]
-
-// Objects
-await storage.set("preferences", { darkMode: false });
-const prefs = await storage.get("preferences"); // { darkMode: boolean }
-
-// TypeScript autocomplete for unions
-await storage.set("view", "kanban"); // ✅ Works
-// await storage.set("view", "calendar"); // ❌ TypeScript error!
-```
-
-### Watching for Changes
-
-```typescript
-const storage = createStorage({ schema });
-
-// Watch a single key
-const stopWatching = storage.watch("theme", (newValue, oldValue) => {
-  console.log(`Theme changed from "${oldValue}" to "${newValue}"`);
-  document.body.setAttribute("data-theme", newValue);
-});
-
-// When done, stop watching
-stopWatching();
-
-// Watch multiple keys — just call watch() multiple times
-storage.watch("fontSize", (newSize) => {
-  document.body.style.fontSize = `${newSize}px`;
-});
-
-storage.watch("notifications", (enabled) => {
-  if (enabled) enableNotifications();
-  else disableNotifications();
+// Watching
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (changes.theme) {
+    console.log("Theme changed:", changes.theme.newValue);
+  }
 });
 ```
 
-### Sync vs Local Storage
+### After
 
 ```typescript
-// Local storage — data stays on this device
-const localSettings = createStorage({
-  schema: defineSchema({
-    lastOpenedFile: "" as string,
-    windowBounds: { width: 800, height: 600 } as { width: number; height: number },
-  }),
-  area: "local",
-});
-
-// Sync storage — syncs across user's signed-in browsers
-const userSettings = createStorage({
-  schema: defineSchema({
-    theme: "dark" as "dark" | "light",
-    bookmarks: [] as string[],
-  }),
-  area: "sync",
-});
-
-// Note: sync has lower storage limits (~100KB)
-// Keep sync data small!
-```
-
----
-
-## Type Safety Explained
-
-webext-storage provides **two layers** of type safety:
-
-### 1. Compile-Time Safety (TypeScript)
-
-```typescript
-const schema = defineSchema({
-  theme: "dark" as "dark" | "light",
-  count: 0,
-});
-
-const storage = createStorage({ schema });
-
-// ✅ TypeScript knows valid keys
-await storage.get("theme");     // Returns: "dark" | "light"
-await storage.get("count");    // Returns: number
-
-// ❌ TypeScript errors on invalid keys
-await storage.get("invalid");   // Compile error!
-// Property 'invalid' does not exist on type...
-
-// ❌ TypeScript errors on invalid values
-await storage.set("count", "oops"); // Compile error!
-// Argument of type 'string' is not assignable to parameter of type 'number'
-```
-
-### 2. Runtime Safety
-
-Even if you bypass TypeScript (e.g., using `any`), the library validates at runtime:
-
-```typescript
-// This will throw a TypeError at runtime!
-await storage.set("count", "not a number");
-
-// Error: [@zovo/webext-storage] Key "count" expects type "number" but received "string"
-```
-
----
-
-## Comparison with Alternatives
-
-| Feature | webext-storage | raw chrome.storage | @aspect-soft/webext-storage |
-|---------|----------------|--------------------|---------------------------|
-| TypeScript Support | ✅ Full | ❌ None | ✅ Basic |
-| Runtime Validation | ✅ Yes | ❌ None | ❌ None |
-| Schema Defaults | ✅ Automatic | ❌ Manual | ❌ None |
-| Watch API | ✅ Type-safe | ✅ Native | ❌ None |
-| Multi-Key Ops | ✅ Yes | ⚠️ Manual | ⚠️ Manual |
-| Zero Dependencies | ✅ Yes | ✅ Yes | ❌ Yes |
-| Firefox Support | ✅ Yes | ⚠️ Different API | ⚠️ Different API |
-
----
-
-## Migration Guide
-
-### From Raw chrome.storage
-
-**Before:**
-```typescript
-// Raw Chrome API
-const getSettings = async () => {
-  const result = await chrome.storage.local.get(["theme", "fontSize"]);
-  return {
-    theme: result.theme ?? "dark",
-    fontSize: result.fontSize ?? 14,
-  };
-};
-
-const setTheme = async (theme: string) => {
-  await chrome.storage.local.set({ theme });
-};
-```
-
-**After:**
-```typescript
-// webext-storage
 const schema = defineSchema({
   theme: "dark" as "dark" | "light",
   fontSize: 14,
 });
 
-const storage = createStorage({ schema });
+const storage = createStorage({ schema, area: "local" });
 
-const getSettings = async () => storage.getAll();
-const setTheme = async (theme: "dark" | "light") => storage.set("theme", theme);
+// Reading — cleaner, with defaults
+const { theme, fontSize } = await storage.getMany(["theme", "fontSize"]);
+
+// Writing
+await storage.set("theme", "light");
+
+// Watching — typed, key-specific
+storage.watch("theme", (newValue, oldValue) => {
+  console.log("Theme changed:", newValue);
+});
 ```
 
----
+## Error Handling
 
-## Firefox and Polyfills
+The library throws descriptive errors to help you debug issues:
 
-The library automatically detects and uses the available storage API:
-
-1. **chrome.storage** — Used in Chrome, Edge, Opera, Brave
-2. **browser.storage** — Used in Firefox with webextension-polyfill
+### Unknown Key
 
 ```typescript
-// This works in both Chrome and Firefox automatically:
-const storage = createStorage({ schema });
-
-// No need for browser-specific code!
-await storage.get("theme");
+await storage.get("nonexistent");
+// Error: [@theluckystrike/webext-storage] Unknown key "nonexistent". Valid keys: theme, fontSize, enabled
 ```
 
-If you're using [webextension-polyfill](https://github.com/mozilla/webextension-polyfill), it works out of the box — the library detects `browser.storage` automatically.
+### Type Mismatch
 
----
+```typescript
+await storage.set("theme", 123);
+// Error: [@theluckystrike/webext-storage] Key "theme" expects type "string" but received "number".
+```
+
+### Storage API Unavailable
+
+```typescript
+// Error: [@theluckystrike/webext-storage] chrome.storage API is not available.
+// Are you running inside a browser extension context?
+```
 
 ## Best Practices
 
-1. **Define schemas at module level** — Create schemas once and reuse them
-2. **Use type assertions for unions** — `"dark" as "dark" | "light"` enables autocomplete
-3. **Prefer `setMany()` for bulk writes** — Reduces storage API calls
-4. **Always unwatch when done** — Clean up watchers in React `useEffect` or component cleanup
-5. **Keep sync data small** — Chrome's sync storage has ~100KB limits
-6. **Validate on set** — The library validates automatically, trust the errors
+### 1. Define Your Schema Once
 
----
+Create your storage instance in a separate module and import it throughout your extension:
+
+```typescript
+// src/storage.ts
+import { defineSchema, createStorage } from "@theluckystrike/webext-storage";
+
+export const storage = createStorage({
+  schema: defineSchema({
+    theme: "dark" as "dark" | "light",
+    // ... other keys
+  }),
+});
+```
+
+```typescript
+// src/popup.ts
+import { storage } from "./storage";
+
+const theme = await storage.get("theme");
+```
+
+### 2. Use Union Types for Enums
+
+```typescript
+const schema = defineSchema({
+  // Good: Exact union type
+  status: "active" as "active" | "inactive" | "pending",
+  
+  // Avoid: Loose string type
+  // status: "active", // Too broad!
+});
+```
+
+### 3. Handle Null Explicitly
+
+```typescript
+const schema = defineSchema({
+  // Explicitly allow null
+  userId: null as string | null,
+  
+  // Or use undefined for optional values
+  // (note: storage doesn't distinguish between unset and undefined)
+});
+```
+
+### 4. Clean Up Watchers
+
+```typescript
+// In popup.ts - clean up when popup closes
+const unwatch = storage.watch("settings", handler);
+
+window.addEventListener("unload", () => {
+  unwatch();
+});
+```
+
+## Contributing
+
+Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) before submitting PRs.
+
+### Development Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Type check
+npm run typecheck
+
+# Build
+npm run build
+```
 
 ## Related Packages
 
-This package is part of the **@zovo/webext** toolkit for building browser extensions:
+This package is part of the Chrome Extension Toolkit:
 
-| Package | Description |
-|---------|-------------|
-| [`@theluckystrike/webext-storage`](https://github.com/theluckystrike/webext-storage) | Typed storage wrapper (this package) |
-| [`@theluckystrike/webext-messaging`](https://github.com/theluckystrike/webext-messaging) | Type-safe message passing |
-| [`@theluckystrike/webext-tabs`](https://github.com/theluckystrike/webext-tabs) | Typed tab utilities |
-
-Visit **[zovo.one](https://zovo.one)** for documentation, guides, and Chrome extension resources.
-
-Looking for a complete extension starter? Check out the **[Chrome Extension Toolkit](https://github.com/theluckystrike/chrome-extension-toolkit)** — a comprehensive template with Vite, TypeScript, React, and all the @zovo packages pre-configured.
-
----
+- [@theluckystrike/webext-messaging](https://github.com/theluckystrike/webext-messaging) — Promise-based message passing
+- [@theluckystrike/webext-permissions](https://github.com/theluckystrike/webext-permissions) — Simplified optional permissions
 
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
----
-
 ## About
 
-Built with ❤️ by **[theluckystrike](https://github.com/theluckystrike)**
+Built by [theluckystrike](https://github.com/theluckystrike) at [Zovo](https://zovo.one), a studio for Chrome extensions and browser tools.
 
-Part of the **@zovo/webext** ecosystem — a collection of TypeScript packages for building professional Chrome extensions and Firefox add-ons.
-
-- **Website**: [zovo.one](https://zovo.one)
-- **GitHub**: [github.com/theluckystrike/webext-storage](https://github.com/theluckystrike/webext-storage)
-- **Issues**: [github.com/theluckystrike/webext-storage/issues](https://github.com/theluckystrike/webext-storage/issues)
-
----
-
-<p align="center">
-  <a href="https://zovo.one">
-    <img src="https://img.shields.io/badge/Part%20of-Zovo%20Webext-orange" alt="Part of Zovo Webext">
-  </a>
-</p>
+Part of the **[Chrome Extension Toolkit](https://github.com/theluckystrike/chrome-extension-toolkit)** — templates, packages, and guides for building professional Chrome extensions.
